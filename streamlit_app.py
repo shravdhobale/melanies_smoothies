@@ -1,45 +1,43 @@
-# Import python packages
 import streamlit as st
+from snowflake.snowpark.session import Session
 from snowflake.snowpark.functions import col
 
+# Snowflake connection parameters
+connection_parameters = {
+    "account": "your_account",
+    "user": "your_username",
+    "password": "your_password",
+    "role": "your_role",
+    "warehouse": "your_warehouse",
+    "database": "your_database",
+    "schema": "your_schema"
+}
 
-# Write directly to the app
-st.title(" :cup_with_straw: Customize Your Smoothie :cup_with_straw:")
-st.write(
-    """
-    Add your favourite fruits for custom smoothie
-    """
-)
+# Create a Snowflake session
+session = Session.builder.configs(connection_parameters).create()
+
+# Streamlit UI
+st.title(":cup_with_straw: Customize Your Smoothie :cup_with_straw:")
+st.write("Add your favourite fruits for a custom smoothie")
+
 name_on_order = st.text_input('Name on Smoothie:')
 st.write('The name on your Smoothie will be:', name_on_order)
 
-session = get_active_session()
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
+# Fetch data from Snowflake
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).to_pandas()
 st.dataframe(data=my_dataframe, use_container_width=True)
 
-ingredients_list = st.multiselect(
-    "Choose up to 5 ingredients:"
-    , my_dataframe
-    , max_Selections=5
-)
-
-
+ingredients_list = st.multiselect("Choose up to 5 ingredients:", my_dataframe['FRUIT_NAME'], max_selections=5)
 
 if ingredients_list:
-    ingredients_string = ''
+    ingredients_string = ' '.join(ingredients_list)
 
-    for fruit_choosen in ingredients_list:
-        ingredients_string += fruit_choosen + ' '
-    #st.write(ingredients_list)
-
-    my_insert_stmt = """ insert into smoothies.public.orders(ingredients, name_on_order)
-            values ('""" + ingredients_string + """' , '"""+name_on_order+"""')"""
+    my_insert_stmt = f"""
+    INSERT INTO smoothies.public.orders(ingredients, name_on_order)
+    VALUES ('{ingredients_string}', '{name_on_order}')
+    """
     st.write(my_insert_stmt)
-    #st.stop()
-    time_to_insert = st.button('Submit Order')
-    if time_to_insert:
+
+    if st.button('Submit Order'):
         session.sql(my_insert_stmt).collect()
         st.success('Your Smoothie is ordered!', icon="✅")
-
-cnx = st.connected("snowflake")
-session = cnx.session()
