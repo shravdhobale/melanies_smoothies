@@ -1,5 +1,1 @@
-#requiremnts
-  - snowflake-snowpark-python
-  - streamlit=1.39.0
-
 
